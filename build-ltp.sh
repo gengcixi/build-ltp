@@ -26,7 +26,7 @@ done
 
 cd ltp
 git pull
-git tag |tail -1 > version
+version=`git tag |tail -1`
 git checkout -b local ${version}
 
 make O=${OUTPUTDIR} distclean

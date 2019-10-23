@@ -8,6 +8,15 @@ TOPDIR=$(cd `dirname $0`; pwd)
 OUTPUTDIR=$TOPDIR/output 
 mkdir -p ${OUTPUTDIR}/$1
 
+# check return error
+check_err()
+{
+    if [ $? -ne 0 ]; then
+        echo Error: $* >&2
+        exit 2
+    fi
+}
+
 if [ $# != 1 ]; then
     echo "please use sh opts(arm|arm64)"
     exit 0
@@ -40,15 +49,20 @@ make O=${OUTPUTDIR} distclean
 make O=${OUTPUTDIR} autotools
 
 ./configure \
-     AR=${CROSS_COMPILE}ar \
-     CC=${CROSS_COMPILE}gcc \
-     RANLIB=${CROSS_COMPILE}ranlib \
-     STRIP=${CROSS_COMPILE}strip \
-     --build=i686-pc-linux-gnu \
-     --host=${platform} \
-     --target=${platform} \
-     --prefix=${OUTPUTDIR}/$1 \
-     ANDROID=1
+	AR=${CROSS_COMPILE}ar \
+	CC=${CROSS_COMPILE}gcc \
+	RANLIB=${CROSS_COMPILE}ranlib \
+	STRIP=${CROSS_COMPILE}strip \
+	--build=i686-pc-linux-gnu \
+	--host=${platform} \
+	--target=${platform} \
+	--prefix=${OUTPUTDIR}/$1 \
+	ANDROID=1
+
+	check_err "Failed to configure ltp!"
+
 
 make O=$OUTPUTDIR/$1
+check_err "Failed to build ltp!"
 make O=$OUTPUTDIR/$1 install
+check_err "Failed to install ltp!"

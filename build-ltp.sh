@@ -5,14 +5,17 @@
 #sudo apt-get install bison flex
 
 TOPDIR=$(cd `dirname $0`; pwd)
-OUTPUT=$TOPDIR/output 
-mkdir -p $OUTPUT
+OUTPUT=${TOPDIR}/output/$1
+mkdir -p ${OUTPUT}
 
-#if [ $# != 1 ]; then
-#    echo "please use sh opts(arm|arm64)"
-#    exit 0
-#
-#fi
+# check return error
+check_err()
+{
+    if [ $? -ne 0 ]; then
+        echo Error: $* >&2
+        exit 2
+    fi
+}
 
 if [ "$1" ] ; then
 	ARCH=$1
@@ -50,12 +53,18 @@ platform=$(echo ${CROSS_COMPILE%%-*})-linux
 while [ ! -d ltp ];do
     git clone https://github.com/linux-test-project/ltp.git
 done
+cd ltp
+git pull
+git branch -D local
+version=`git tag |tail -1`
+echo $version
+git checkout -b local ${version}
 
 function build_ltp()
 {
 	echo "======= start build ltp ======="
 	cd $TOPDIR/ltp
-	make O=${OUTPUT}/ltp distclean
+	make O=${OUTPUT}/ltp -s distclean
 	make O=${OUTPUT}/ltp autotools
 
 	echo ${platform}
@@ -69,12 +78,18 @@ function build_ltp()
 		--target=${platform} \
 		--prefix=${OUTPUT}/ltp \
 		ANDROID=1
+	check_err "Failed to configure ltp!"
 
 	make O=${OUTPUT}/ltp -j $JOBS
+	check_err "Failed to build ltp!"
+
 	make O=${OUTPUT}/ltp install
-	make O=${LTP_OUTPUT} distclean
+	check_err "Failed to install ltp!"
+
+	make O=${OUTPUT} -s distclean
 	find ./* -maxdepth 1 -name "conf*" -type d |xargs rm -rf
 	echo "======= build ltp done ======="
 	cd ${TOPDIR}
 }
 build_ltp
+

@@ -12,13 +12,28 @@ mkdir -p ${OUTPUT}
 check_err()
 {
     if [ $? -ne 0 ]; then
-        echo Error: $* >&2
+        echo -e "\033[31m Error: $* \033[0m" >&2
+
         exit 2
     fi
 }
 
 if [ "$1" ] ; then
 	ARCH=$1
+	case $1 in
+		arm)
+			ARCH=arm
+			CROSS_COMPILE=arm-linux-gnueabihf-
+			;;
+		arm64)
+			ARCH=arm64
+			CROSS_COMPILE=aarch64-linux-gnu-
+			;;
+		*)
+			echo "Can't find the architectrue: ${ARCH}"
+			exit 0
+			;;
+	esac
 else
 	echo "please appoint the architecture:	"
 	echo "1. arm "
@@ -53,12 +68,12 @@ platform=$(echo ${CROSS_COMPILE%%-*})-linux
 while [ ! -d ltp ];do
     git clone https://github.com/linux-test-project/ltp.git
 done
-cd ltp
-git pull
-git branch -D local
-version=`git tag |tail -1`
-echo $version
-git checkout -b local ${version}
+#cd ltp
+#git pull
+#git branch -D local
+#version=`git tag |tail -1`
+#echo $version
+#git checkout -b local ${version}
 
 function build_ltp()
 {
@@ -67,7 +82,9 @@ function build_ltp()
 	make O=${OUTPUT}/ltp -s distclean
 	make O=${OUTPUT}/ltp autotools
 
-	echo ${platform}
+    echo -e "\033[31m ${platform} \033[0m" >&2
+    echo -e "\033[31m ${CROSS_COMPILE} \033[0m" >&2
+
 	./configure \
 		AR=${CROSS_COMPILE}ar \
 		CC=${CROSS_COMPILE}gcc \
@@ -80,13 +97,14 @@ function build_ltp()
 		ANDROID=1
 	check_err "Failed to configure ltp!"
 
-	make O=${OUTPUT}/ltp -j $JOBS
+	make O=${OUTPUT}/ltp
 	check_err "Failed to build ltp!"
 
 	make O=${OUTPUT}/ltp install
 	check_err "Failed to install ltp!"
 
-	make O=${OUTPUT} -s distclean
+	make O=${OUTPUT}/ltp -s distclean
+
 	find ./* -maxdepth 1 -name "conf*" -type d |xargs rm -rf
 	echo "======= build ltp done ======="
 	cd ${TOPDIR}

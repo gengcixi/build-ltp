@@ -79,7 +79,7 @@ function build_ltp()
 {
 	echo "======= start build ltp ======="
 	cd $TOPDIR/ltp
-	make O=${OUTPUT}/ltp -s distclean
+	make O=${OUTPUT}/ltp distclean >/dev/null 2>&1
 	make O=${OUTPUT}/ltp autotools
 
     echo -e "\033[31m ${platform} \033[0m" >&2
@@ -103,10 +103,10 @@ function build_ltp()
 	make O=${OUTPUT}/ltp install
 	check_err "Failed to install ltp!"
 
-	make O=${OUTPUT}/ltp -s distclean
+	make O=${OUTPUT}/ltp distclean >/dev/null 2>&1
 
-	find ./* -maxdepth 1 -name "conf*" -type d |xargs rm -rf
 	echo "======= build ltp done ======="
+	find ./* -maxdepth 1 -name "conf*" -type d |xargs rm -rf
 	cd ${TOPDIR}
 }
 build_ltp

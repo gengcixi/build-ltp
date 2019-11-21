@@ -11,11 +11,14 @@ mkdir -p ${OUTPUT}
 # check return error
 check_err()
 {
-    if [ $? -ne 0 ]; then
-        echo -e "\033[31m Error: $* \033[0m" >&2
-
-        exit 2
-    fi
+	if [ $? -ne 0 ]; then
+		echo -e "\033[31m FAIL: $* \033[0m" >&2
+		return_val=1
+		return
+	else
+		echo -e "\033[33m PASS: $* \033[0m" >&2
+		return_val=0
+	fi
 }
 
 if [ "$1" ] ; then
@@ -95,17 +98,19 @@ function build_ltp()
 		--target=${platform} \
 		--prefix=${OUTPUT}/ltp \
 		ANDROID=1
-	check_err "Failed to configure ltp!"
-
-	make O=${OUTPUT}/ltp
-	check_err "Failed to build ltp!"
-
-	make O=${OUTPUT}/ltp install
-	check_err "Failed to install ltp!"
-
+	check_err "Configure ltp!"
+	if [ ${return_val} -eq 0 ]; then
+		make O=${OUTPUT}/ltp
+		check_err "Build ltp!"
+	fi
+	if [ ${return_val} -eq 0 ]; then
+		make O=${OUTPUT}/ltp install
+		check_err "Install ltp!"
+		if [ ${return_val} -eq 0 ]; then
+			echo "======= build ltp done ======="
+		fi
+	fi
 	make O=${OUTPUT}/ltp distclean >/dev/null 2>&1
-
-	echo "======= build ltp done ======="
 	find ./* -maxdepth 1 -name "conf*" -type d |xargs rm -rf
 	cd ${TOPDIR}
 }

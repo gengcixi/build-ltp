@@ -3,20 +3,35 @@
 # build requirement tools
 #sudo apt-get install make 	
 #sudo apt-get install bison flex
+#sudo apt-get install automake autoconf m4
 
 TOPDIR=$(cd `dirname $0`; pwd)
+TOP_SRCDIR=${TOPDIR}/ltp
+TOP_BUILDDIR=${TOPDIR}/build
 OUTPUT=${TOPDIR}/output/$1
-mkdir -p ${OUTPUT}
+
+#SYSROOT=rootfs_path
 
 # check return error
 check_err()
 {
     if [ $? -ne 0 ]; then
         echo -e "\033[31m Error: $* \033[0m" >&2
-
-        exit 2
+        return_val=1
+    else
+        echo -e "\033[31m PASS: $* \033[0m]]" >&2
+        return_val=0
     fi
 }
+
+if [ -d ${OUTPUT}} ];then
+	rm -rf ${OUTPUT}
+fi
+if [ -d ${TOP_BUILDDIR} ];then
+	rm -rf ${TOP_BUILDDIR}
+fi
+mkdir -p ${TOP_BUILDDIR}
+mkdir -p ${OUTPUT}
 
 if [ "$1" ] ; then
 	ARCH=$1
@@ -63,8 +78,6 @@ else
 	esac
 fi
 
-platform=$(echo ${CROSS_COMPILE%%-*})-linux
-
 while [ ! -d ltp ];do
     git clone https://github.com/linux-test-project/ltp.git
 done
@@ -75,17 +88,13 @@ done
 #echo $version
 #git checkout -b local ${version}
 
-function build_ltp()
+platform=$(echo ${CROSS_COMPILE%%-*})-linux
+config_ltp()
 {
-	echo "======= start build ltp ======="
-	cd $TOPDIR/ltp
-	make O=${OUTPUT}/ltp distclean >/dev/null 2>&1
-	make O=${OUTPUT}/ltp autotools
-
-    echo -e "\033[31m ${platform} \033[0m" >&2
-    echo -e "\033[31m ${CROSS_COMPILE} \033[0m" >&2
-
-	./configure \
+	cd ${TOP_SRCDIR}
+	make autotools
+	cd ${TOP_BUILDDIR}
+	${TOP_SRCDIR}/configure  \
 		AR=${CROSS_COMPILE}ar \
 		CC=${CROSS_COMPILE}gcc \
 		RANLIB=${CROSS_COMPILE}ranlib \
@@ -93,21 +102,30 @@ function build_ltp()
 		--build=i686-pc-linux-gnu \
 		--host=${platform} \
 		--target=${platform} \
-		--prefix=${OUTPUT}/ltp \
-		ANDROID=1
-	check_err "Failed to configure ltp!"
-
-	make O=${OUTPUT}/ltp
-	check_err "Failed to build ltp!"
-
-	make O=${OUTPUT}/ltp install
-	check_err "Failed to install ltp!"
-
-	make O=${OUTPUT}/ltp distclean >/dev/null 2>&1
-
-	echo "======= build ltp done ======="
-	find ./* -maxdepth 1 -name "conf*" -type d |xargs rm -rf
-	cd ${TOPDIR}
+		--prefix=${OUTPUT}/ltp 
 }
-build_ltp
+build_ltp()
+{
+	make \
+		-C "${TOP_BUILDDIR}" \
+		-f "${TOP_SRCDIR}/Makefile" \
+		"top_srcdir=$TOP_SRCDIR" \
+		"top_builddir=$TOP_BUILDDIR" 
+
+	check_err "Failed to build ltp!"
+	make \
+		-C "${TOP_BUILDDIR}" \
+		-f "${TOP_SRCDIR}/Makefile" \
+		"top_srcdir=${TOP_SRCDIR}" \
+		"top_builddir=${TOP_BUILDDIR}" \
+		SKIP_IDCHECK=[1] \
+		install
+}
+
+config_ltp
+check_err "config ltp"
+if [ ${return_val} -eq 0 ];then
+    build_ltp
+    check_err "build ltp"
+fi
 

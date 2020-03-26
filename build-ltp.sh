@@ -7,7 +7,7 @@
 
 TOPDIR=$(cd `dirname $0`; pwd)
 TOP_SRCDIR=${TOPDIR}/ltp
-TOP_BUILDDIR=${TOPDIR}/build
+TOP_BUILDDIR=${TOPDIR}/output/build
 OUTPUT=${TOPDIR}/output/$1
 
 #SYSROOT=rootfs_path

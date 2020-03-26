@@ -1,0 +1,10 @@
+#!/bin/bash
+
+while read -r line
+do
+    echo ">>> ${line} cases <<<">>all-testcase.txt
+    while read -r case
+    do 
+        echo $case>> all-testcase.txt
+    done < ltp/runtest/${line}
+done < ltp/scenario_groups/default

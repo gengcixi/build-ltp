@@ -33,6 +33,16 @@ fi
 mkdir -p ${TOP_BUILDDIR}
 mkdir -p ${OUTPUT}
 
+build_local()
+{
+    cd ${TOP_SRCDIR}
+    make autotools
+    ./configure
+    make && sudo  make install
+    make distclean
+    cd ${TOPDIR}
+}
+
 if [ "$1" ] ; then
 	ARCH=$1
 	case $1 in
@@ -44,6 +54,9 @@ if [ "$1" ] ; then
 			ARCH=arm64
 			CROSS_COMPILE=aarch64-linux-gnu-
 			;;
+        x86)
+            build_local
+            ;;
 		*)
 			echo "Can't find the architectrue: ${ARCH}"
 			exit 0
@@ -81,12 +94,6 @@ fi
 while [ ! -d ltp ];do
     git clone https://github.com/linux-test-project/ltp.git
 done
-#cd ltp
-#git pull
-#git branch -D local
-#version=`git tag |tail -1`
-#echo $version
-#git checkout -b local ${version}
 
 platform=$(echo ${CROSS_COMPILE%%-*})-linux
 config_ltp()
@@ -106,26 +113,28 @@ config_ltp()
 }
 build_ltp()
 {
-	make \
-		-C "${TOP_BUILDDIR}" \
-		-f "${TOP_SRCDIR}/Makefile" \
-		"top_srcdir=$TOP_SRCDIR" \
-		"top_builddir=$TOP_BUILDDIR" 
-
-	check_err "Failed to build ltp!"
-	make \
-		-C "${TOP_BUILDDIR}" \
-		-f "${TOP_SRCDIR}/Makefile" \
-		"top_srcdir=${TOP_SRCDIR}" \
-		"top_builddir=${TOP_BUILDDIR}" \
-		SKIP_IDCHECK=[1] \
-		install
+    config_ltp
+    check_err "config ltp"
+    if [ ${return_val} -eq 0 ];then
+	    make \
+            -C "${TOP_BUILDDIR}" \
+            -f "${TOP_SRCDIR}/Makefile" \
+            "top_srcdir=$TOP_SRCDIR" \
+            "top_builddir=$TOP_BUILDDIR"
+	    check_err "Failed to make ltp!"
+        if [ ${return_val} -eq 0 ];then
+        make \
+            -C "${TOP_BUILDDIR}" \
+            -f "${TOP_SRCDIR}/Makefile" \
+            "top_srcdir=${TOP_SRCDIR}" \
+            "top_builddir=${TOP_BUILDDIR}" \
+            SKIP_IDCHECK=[1] \
+            install
+    check_err "Failed to make ltp!"
+        fi
+    fi
 }
 
-config_ltp
-check_err "config ltp"
-if [ ${return_val} -eq 0 ];then
+if [ $ARCH != "x86" ];then
     build_ltp
-    check_err "build ltp"
 fi
-

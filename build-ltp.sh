@@ -19,10 +19,13 @@ check_err()
         echo -e "\033[31m Error: $* \033[0m" >&2
         return_val=1
     else
-        echo -e "\033[31m PASS: $* \033[0m]]" >&2
+        echo -e "\033[31m PASS: $* \033[0m" >&2
         return_val=0
     fi
 }
+while [ ! -d ltp ];do
+    git clone https://github.com/linux-test-project/ltp.git
+done
 
 if [ -d ${OUTPUT}} ];then
 	rm -rf ${OUTPUT}
@@ -37,10 +40,27 @@ build_local()
 {
     cd ${TOP_SRCDIR}
     make autotools
-    ./configure
-    make && sudo  make install
-    make distclean
-    cd ${TOPDIR}
+    cd ${TOP_BUILDDIR}
+    ${TOP_SRCDIR}/configure
+    check_err "config ltp!"
+    if [ ${return_val} -eq 0 ];then
+        make \
+        -C "${TOP_BUILDDIR}" \
+        -f "${TOP_SRCDIR}/Makefile" \
+        "top_srcdir=$TOP_SRCDIR" \
+        "top_builddir=$TOP_BUILDDIR"
+        check_err "make ltp!"
+        if [ ${return_val} -eq 0 ];then
+            sudo make \
+            -C "${TOP_BUILDDIR}" \
+            -f "${TOP_SRCDIR}/Makefile" \
+            "top_srcdir=${TOP_SRCDIR}" \
+            "top_builddir=${TOP_BUILDDIR}" \
+            SKIP_IDCHECK=[0] \
+            install
+            check_err "intall ltp!"
+        fi
+    fi
 }
 
 if [ "$1" ] ; then
@@ -91,9 +111,6 @@ else
 	esac
 fi
 
-while [ ! -d ltp ];do
-    git clone https://github.com/linux-test-project/ltp.git
-done
 
 platform=$(echo ${CROSS_COMPILE%%-*})-linux
 config_ltp()
@@ -121,16 +138,16 @@ build_ltp()
             -f "${TOP_SRCDIR}/Makefile" \
             "top_srcdir=$TOP_SRCDIR" \
             "top_builddir=$TOP_BUILDDIR"
-	    check_err "Failed to make ltp!"
+	    check_err "make ltp!"
         if [ ${return_val} -eq 0 ];then
         make \
             -C "${TOP_BUILDDIR}" \
             -f "${TOP_SRCDIR}/Makefile" \
             "top_srcdir=${TOP_SRCDIR}" \
             "top_builddir=${TOP_BUILDDIR}" \
-            SKIP_IDCHECK=[1] \
+            SKIP_IDCHECK=[0] \
             install
-    check_err "Failed to make ltp!"
+            check_err "intall ltp!"
         fi
     fi
 }

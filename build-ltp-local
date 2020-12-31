@@ -1,0 +1,109 @@
+#!/bin/bash
+
+# Export language settings
+export LANG=C
+export LC_ALL=C
+# Set some useful variables (adapt if you dislike)
+
+MAKE_JOBS=$(getconf _NPROCESSORS_ONLN)
+
+PREFIX="/opt/ltp"
+SYSROOT=""
+WORKING_DIR="$HOME/src/ltp"
+TOP_SRCDIR=${WORKING_DIR}/ltp-git
+TOP_BUILD_DIR=${WORKING_DIR}/ltp-build
+BUILD_LOG_FILE="build-log.txt"
+INSTALL_LOG_FILE="install-log.txt"
+GIT_URL="https://github.com/linux-test-project/ltp.git"
+
+#if [ $ARCH == arm ]; then
+#	PKG_CONFIG_SYSROOT_DIR=$SYSROOT
+#	PKG_CONFIG_LIBDIR=/usr/lib/i386-linux-gnu/pkgconfig CFLAGS=-m32 LDFLAGS=-m32 ./configure
+#fi
+
+#check functions return
+check_err()
+{
+	if [[ $1 -ne 0 ]]; then
+		return_val=$1
+		shift 1
+		echo -e "\033[31m FAIL: $* \033[0m" >&2
+		return $return_val
+	else
+		return 0
+	fi
+}
+#get ltp src
+get_ltp_src()
+{
+	echo $WORKING_DIR
+	echo $TOP_SRCDIR
+	if [[ -d $WORKING_DIR ]];then
+		# Working directory
+		mkdir -p $WORKING_DIR
+	fi
+	if [[ ! -d $TOP_SRCDIR ]];then
+		cd $WORKING_DIR
+		# Get the LTP source
+		git clone $GIT_URL ltp-git
+	fi
+	check_err $? $FUNCNAME
+	return $return_val
+}
+# config
+ltp_config()
+{
+	# Configure LTP
+	cd ${TOP_SRCDIR}
+	make autotools
+	check_err $? $FUNCNAME
+	
+	#Out-of-build-tree
+	mkdir -p "${TOP_BUILD_DIR}"
+	cd $TOP_BUILD_DIR && $TOP_SRCDIR/configure --prefix=$PREFIX
+	check_err $? $FUNCNAME
+	return $return_val
+}
+
+# Start building LTP
+ltp_build()
+{
+	make \
+		-C "${TOP_BUILD_DIR}" \
+		-f "$TOP_SRCDIR/Makefile" \
+		"top_srcdir=$TOP_SRCDIR" \
+		"top_builddir=${TOP_BUILD_DIR}" \
+		-j$MAKE_JOBS 2>&1 | tee ../$BUILD_LOG_FILE
+	# Install LTP (requires superuser privileges)
+	check_err $? $FUNCNAME
+	return $return_val
+}
+# LTP install
+ltp_install()
+{
+	sudo make \
+		-C "${TOP_BUILD_DIR}" \
+		-f "$TOP_SRCDIR/Makefile" \
+		"top_srcdir=$TOP_SRCDIR" \
+		"top_builddir=${TOP_BUILD_DIR}" \
+		"DESTDIR=$SYSROOT" \
+		SKIP_IDCHECK=1 \
+		install 2>&1 | tee ../$INSTALL_LOG_FILE
+	check_err $? $FUNCNAME
+	return $return_val
+}
+
+return_val=0
+
+if [[ $return_val -eq 0 ]];then
+	get_ltp_src
+fi
+if [[ $return_val -eq 0 ]];then
+	ltp_config
+fi
+if [[ $return_val -eq 0 ]];then
+	ltp_build
+fi
+if [[ $return_val -eq 0 ]];then
+	ltp_install
+fi

@@ -1,0 +1,10 @@
+#!/bin/bash
+
+# PREREQS on Ubuntu (package-list is incomplete and may vary for other distros)
+
+sudo apt-get install bison build-essential flex lib
+sudo apt-get install autoconf automake autotools-dev m4
+sudo apt-get install git gcc make libc6-dev pkgconf
+sudo apt-get install linux-headers-$(uname -r)
+sudo apt-get install libaio-dev libattr1-dev libcap-dev
+

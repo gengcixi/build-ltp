@@ -36,33 +36,6 @@ fi
 mkdir -p ${TOP_BUILDDIR}
 mkdir -p ${OUTPUT}
 
-build_local()
-{
-    cd ${TOP_SRCDIR}
-    make autotools
-    cd ${TOP_BUILDDIR}
-    ${TOP_SRCDIR}/configure
-    check_err "config ltp!"
-    if [ ${return_val} -eq 0 ];then
-        make \
-        -C "${TOP_BUILDDIR}" \
-        -f "${TOP_SRCDIR}/Makefile" \
-        "top_srcdir=$TOP_SRCDIR" \
-        "top_builddir=$TOP_BUILDDIR"
-        check_err "make ltp!"
-        if [ ${return_val} -eq 0 ];then
-            sudo make \
-            -C "${TOP_BUILDDIR}" \
-            -f "${TOP_SRCDIR}/Makefile" \
-            "top_srcdir=${TOP_SRCDIR}" \
-            "top_builddir=${TOP_BUILDDIR}" \
-            SKIP_IDCHECK=[0] \
-            install
-            check_err "intall ltp!"
-        fi
-    fi
-}
-
 if [ "$1" ] ; then
 	ARCH=$1
 	case $1 in
@@ -74,9 +47,6 @@ if [ "$1" ] ; then
 			ARCH=arm64
 			CROSS_COMPILE=aarch64-linux-gnu-
 			;;
-        x86)
-            build_local
-            ;;
 		*)
 			echo "Can't find the architectrue: ${ARCH}"
 			exit 0
@@ -152,6 +122,4 @@ build_ltp()
     fi
 }
 
-if [ $ARCH != "x86" ];then
-    build_ltp
-fi
+build_ltp
